@@ -10,6 +10,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JSlider;
+import javax.swing.JTextField;
+
 import com.github.sarxos.webcam.Webcam;
 
 import boofcv.abst.feature.detect.interest.ConfigGeneralDetector;
@@ -51,7 +56,8 @@ public class WebCamMain {
     //Optimal percent of the tape takes up of the smallest cube around it
     private static final double PERCENT_AREA = 0.31428571428;
     //Minimum sum of rgb values to be counted in a shape
-    public static final int MIN_L = 550;
+    public static final int MIN_L = -269/*550*/;
+    public static final int MIN_G = 249;
     //A display for testing the program
     static ListDisplayPanel gui = new ListDisplayPanel();
     //Settings for polygon display
@@ -61,8 +67,24 @@ public class WebCamMain {
     private static final int MIN_HEIGHT = 10;
     private static final int MIN_WIDTH = 10;
     private static boolean initialized = false;
+    //private static JTextField GSlide = new JTextField("1", 10/*0, 255*/);
+    //private static JSlider LSlide = new JSlider(-510, 255);
+    //private static JPanel sliders = new JPanel();
+    //static JPanel panel = new JPanel();
+    private static boolean useSliders = true;
+    private static Sliders sl;
     public static void main(String[] args) {
-  
+        //JFrame frame = new JFrame("Sliders");
+        //sliders.add(GSlide);
+        //sliders.add(LSlide);
+        //Slide.setEnabled(true);
+        //gui.add(panel);
+        //frame.add(sliders);
+        //frame.pack();
+        //frame.setVisible(true);
+        Thread t = new Thread();
+        sl = new Sliders(MIN_L, MIN_G);
+        //gui.addItem(sliders, "Sliders");
         Random rand = new Random(234);
         // tune the tracker for the image size and visual appearance
         ConfigGeneralDetector configDetector = new ConfigGeneralDetector(-1,8,1);
@@ -80,7 +102,7 @@ public class WebCamMain {
 
         ShowImages.showWindow(gui,"KLT Tracker",true);
         Point2D_I32[] past = null;
-        int minimumTracks = 100;
+        //int minimumTracks = 100;
         while( true ) {
             BufferedImage image = webcam.getImage();
             if(initialized){
@@ -94,8 +116,8 @@ public class WebCamMain {
                 for(int y = 0; y < lImage.getHeight(); y++){
                     int[] rgb = getRGBFromPixel(image.getRGB(x, y));
                     int newColor;
-                    int l = rgb[0] + rgb[1] + rgb[2];
-                    if(l > MIN_L){
+                    int l = rgb[1] - rgb[2] - rgb[0];
+                    if(l > L() && rgb[1] > G()){
                         newColor = 0;
                     } else {
                         newColor = 255;
@@ -138,20 +160,20 @@ public class WebCamMain {
                 if(height > MIN_HEIGHT && width > MIN_WIDTH && cornerSize != 0/* && size > minSize*/){
                     double error = 0;
                     //adds error if the ratio of width to height is different from expected
-                    error += Math.abs(1.0 - (width/height)/WH_RATIO);
+                    error += Math.abs(1.0 - (width/height)/WH_RATIO) * 10;
                     //adds error if it is taking up a different percent of expected cube area
-                    error += Math.abs(1.0 - (size/cornerSize)/PERCENT_AREA);
+                    error += Math.abs(1.0 - (size/cornerSize)/PERCENT_AREA) * 10;
                     //adds error if the right corners have different x values
-                    error += Math.abs(corners[0].x - corners[3].x)/width;
+                    error += Math.abs(corners[0].x - corners[3].x)/width * 10;
                     //adds error if the left corners have different x values
-                    error += Math.abs(corners[1].x - corners[2].x)/width;
+                    error += Math.abs(corners[1].x - corners[2].x)/width * 10;
                     //adds error if there is empty space inside the shape
                     if(!c.internal.isEmpty()){
-                        error += 0.1;
+                        error += 0.1 * 10;
                     }
                     if(past != null){
                         for(int i = 0; i < 4; i++){
-                            error += (Math.abs(past[i].x - corners[i].x) + Math.abs(past[i].y - corners[i].y))/20;
+                            error += (Math.abs(past[i].x - corners[i].x) + Math.abs(past[i].y - corners[i].y))/70;
                         }
                     }
                     /*List<Point2D_I32> top = between(c.external, corners[0], corners[1]);
@@ -294,5 +316,17 @@ public class WebCamMain {
             b.add(list.get(i));
         }
         return b;
+    }
+    private static int G(){
+        if(useSliders){
+            return sl.getG();
+        }
+        return MIN_G;
+    }
+    private static int L(){
+        if(useSliders){
+            return sl.getL();
+        }
+        return MIN_L;
     }
 }
