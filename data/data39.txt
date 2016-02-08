@@ -1,0 +1,7 @@
+negligible
+whError=0.04999999790000009, apError=0.98653805632921, svError=0.05194805194805195, niError=0.0, chosen=true
+whError=0.8285714289142857, apError=0.9509695495088041, svError=0.8076923076923077, niError=0.0, chosen=false
+whError=0.4000000012, apError=0.9418232962526183, svError=0.4230769230769231, niError=0.0, chosen=false
+negligible
+negligible
+negligible

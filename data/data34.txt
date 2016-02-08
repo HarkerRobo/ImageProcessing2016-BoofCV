@@ -1,0 +1,2 @@
+whError=0.03448275655172406, apError=0.06250579315973881, svError=0.092, niError=1.0, chosen=true
+whError=0.7897435901641026, apError=1.6739524187962007, svError=1.6097560975609757, niError=1.0, chosen=false

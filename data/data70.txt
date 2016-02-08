@@ -1,0 +1,4 @@
+whError=0.014925375104477556, apError=0.15873890421451753, svError=0.03636363636363636, niError=1.0, chosen=true
+whError=0.16470588402352937, apError=0.5410169323730118, svError=0.19718309859154928, niError=1.0, chosen=false
+negligible
+negligible

@@ -4,7 +4,20 @@ import georegression.struct.shapes.Quadrilateral_F64;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -47,11 +60,11 @@ import boofcv.struct.image.ImageType;
 import boofcv.struct.image.ImageUInt8;
 
 /**
- * Processes a video feed and tracks points using KLT
+ * Gathers data to learn the correct weights from
  *
  * @author joelmanning
  */
-public class WebCamMain {
+public class WebCamDataFinder {
 
     //Optimal width/height for the tape
     private static final double WH_RATIO = 1.66666667;
@@ -76,17 +89,37 @@ public class WebCamMain {
     private static boolean useSliders = true;
     private static Sliders sl;
     public static void main(String[] args) {
+        int dataNum = Integer.MAX_VALUE;
+        try
+        {
+            BufferedReader br = new BufferedReader(new FileReader("data/data"));
+            dataNum = Integer.parseInt(br.readLine());
+        }
+        catch (FileNotFoundException e1)
+        {
+            e1.printStackTrace();
+        }
+        catch (NumberFormatException e)
+        {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        catch (IOException e)
+        {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        //List<String> lines = new ArrayList<String>();//Arrays.asList("The first line", "The second line");
+        //Path file = Paths.get("data" + dataNum + ".txt");
+        //Files.write(file, lines, Charset.forName("UTF-8"));
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
         if(useSliders){
             sl = new Sliders(MIN_L, MIN_G, STAY_VALUE);
         }
-        // tune the tracker for the image size and visual appearance
-        ConfigGeneralDetector configDetector = new ConfigGeneralDetector(-1,8,1);
-        PkltConfig configKlt = new PkltConfig(3,new int[]{1,2,4,8});
-
+        //Chooser cho = new Chooser();
+        //gui.addKeyListener(cho);
         // Open a webcam at a resolution close to 640x480
         Webcam webcam = UtilWebcamCapture.openDefault(640,480);
-        // specify the target's initial location and initialize with the first frame
-        //tracker.initialize(frame,location);
         // Create the panel used to display the image and feature tracks
         ImagePanel gui = new ImagePanel();
         gui.setPreferredSize(webcam.getViewSize());
@@ -94,6 +127,8 @@ public class WebCamMain {
         Point2D_I32[] past = null;
         //int minimumTracks = 100;
         while( true ) {
+            List<String> lines = new ArrayList<String>();//Arrays.asList("The first line", "The second line");
+            Path file = Paths.get("data/data" + dataNum + ".txt");
             BufferedImage image = webcam.getImage();
             //turns it into a black and white image where black are the light pixels and everything else is white
             BufferedImage lImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
@@ -157,26 +192,25 @@ public class WebCamMain {
                 if(height > MIN_HEIGHT && width > MIN_WIDTH && cornerSize != 0/* && size > minSize*/){
                     double error = 0;
                     //adds error if the ratio of width to height is different from expected
-                    error += Math.abs((double)1.0 - ((double)width/height)/WH_RATIO) * whWeight();
+                    double whError = Math.abs((double)1.0 - ((double)width/height)/WH_RATIO);
+                    error +=  whError * whWeight();
                     //adds error if it is taking up a different percent of expected cube area
-                    error += Math.abs((double)1.0 - ((double)size/cornerSize)/PERCENT_AREA) * apWeight();
-                    //adds error if the right corners have different x values
-                    error += Math.abs((double)corners[0].x - corners[3].x)/width * sideVerticalWeight();
-                    //adds error if the left corners have different x values
-                    error += Math.abs((double)corners[1].x - corners[2].x)/width * sideVerticalWeight();
+                    double apError = Math.abs((double)1.0 - ((double)size/cornerSize)/PERCENT_AREA);
+                    error += apError * apWeight();
+                    //adds error if the right corners have different x values and if the left corners have different x values
+                    double svError = Math.abs((double)corners[0].x - corners[3].x)/width + Math.abs((double)corners[1].x - corners[2].x)/width;
+                    error += svError * sideVerticalWeight();
                     //adds error if there is empty space inside the shape
+                    double niError = 0;
                     if(!c.internal.isEmpty()){
-                        error += 0.1 * noInternalWeight();
+                        niError = 1;
                     }
+                    error += niError * noInternalWeight();
                     if(past != null){
                         for(int i = 0; i < 4; i++){
                             error += (Math.abs(past[i].x - corners[i].x) + Math.abs(past[i].y - corners[i].y)) * stayWeight();
                         }
                     }
-                    /*List<Point2D_I32> top = between(c.external, corners[0], corners[1]);
-                    List<Point2D_I32> bottom = between(c.external, corners[2], corners[3]);
-                    List<Point2D_I32> right = between(c.external, corners[0], corners[3]);
-                    List<Point2D_I32> left = between(c.external, , corners[2], 4);*/
                     //if this has less error than the current least error set current corners to this
                     if(error < currentError){
                         currentError = error;
@@ -186,6 +220,9 @@ public class WebCamMain {
                     if(tm.put(new Double(error), c) != null){
                         System.out.println("overwritten");
                     }
+                    lines.add("whError=" + whError + ", apError=" + apError + ", svError=" + svError + ", niError=" + niError + ", chosen=false");
+                } else {
+                    lines.add("negligible");
                 }
                 //List<PointIndex_I32> vertexes = ShapeFittingOps.fitPolygon(
                 //        c.external, true, splitFraction, minimumSideFraction, 100);
@@ -207,19 +244,12 @@ public class WebCamMain {
             Entry<Double, Contour> current = tm.firstEntry();
             int g = 255;
             int r = 0;       
-            while(true){
-                if(current == null){
-                    break;
-                }
-                current = tm.higherEntry(current.getKey());
-                if(current == null){
-                    break;
-                }
-                Color c = new Color(r, g, 0);
+            for(int i = 0; i < 3 && current != null; i++){
+                System.out.println(255 * (Math.max(0, i - 1)) + ", " +  255 * (i % 2) + ", " +  255 * (1 - Math.signum(i)));
+                Color c = new Color((Math.max(0, i - 1)), (i % 2), (1 - Math.signum(i)));
                 g2.setColor(c);
                 VisualizeShapes.drawPolygon(current.getValue().external, true, g2);
-                g = Math.max(0, g - 30);
-                r = Math.min(255, r + 30);
+                current = tm.higherEntry(current.getKey());
             }
             List<PointIndex_I32> vertexes = ShapeFittingOps.fitPolygon(
                     l, true, splitFraction, minimumSideFraction, 100);
@@ -227,6 +257,44 @@ public class WebCamMain {
             //draws the final conclusion of the program in cyan, then prints it out
             VisualizeShapes.drawPolygon(vertexes, true, g2);
             gui.setBufferedImageSafe(lImage);
+            try
+            {
+                while(true){
+                    String in = br.readLine();
+                    if(in.equalsIgnoreCase("r")){
+                        int index = contours.indexOf(tm.higherEntry(tm.higherKey(tm.firstKey())).getValue());
+                        lines.set(index, lines.get(index).substring(0, lines.get(index).length() - 5) + "true");
+                        break;
+                    } else if(in.equalsIgnoreCase("g")){
+                        int index = contours.indexOf(tm.higherEntry(tm.firstKey()).getValue());
+                        lines.set(index, lines.get(index).substring(0, lines.get(index).length() - 5) + "true");
+                        break;
+                    } else if(in.equalsIgnoreCase("b")){
+                        int index = contours.indexOf(tm.firstEntry().getValue());
+                        lines.set(index, lines.get(index).substring(0, lines.get(index).length() - 5) + "true");
+                        break;
+                    } else if(in.equalsIgnoreCase("s")){
+                        dataNum--;
+                        break;
+                    } else if(in.equalsIgnoreCase("stop")){
+                        PrintWriter pw = new PrintWriter(new FileWriter("data/data"));
+                        pw.println(dataNum);
+                        pw.close();
+                        br.close();
+                        System.exit(0);
+                    }
+                    else {
+                        System.out.println("Could not recognize input, type r, g, b, or s");
+                    }
+                }
+                Files.write(file, lines, Charset.forName("UTF-8"));
+                dataNum++;
+            }
+            catch (IOException e)
+            {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
         }
     }
     private static Point2D_I32[] fourCorners(List<Point2D_I32> points){

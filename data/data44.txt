@@ -1,0 +1,18 @@
+whError=0.15999999768000017, apError=2.2429378531663073, svError=0.06896551724137931, niError=1.0, chosen=false
+whError=0.1571428548285716, apError=0.8431788704133732, svError=0.07407407407407407, niError=0.0, chosen=false
+negligible
+whError=0.3499999973000001, apError=1.9679144385566358, svError=0.047619047619047616, niError=1.0, chosen=false
+whError=0.5200000009599999, apError=1.5093720712733663, svError=0.25, niError=1.0, chosen=false
+negligible
+negligible
+negligible
+negligible
+negligible
+negligible
+negligible
+negligible
+negligible
+negligible
+whError=0.028169016028168903, apError=0.24315575796411815, svError=0.1391304347826087, niError=1.0, chosen=true
+whError=0.56500000087, apError=0.6917029888227879, svError=0.13793103448275862, niError=1.0, chosen=false
+negligible
